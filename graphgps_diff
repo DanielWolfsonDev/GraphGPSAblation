@@ -1,0 +1,47 @@
+diff --git a/graphgps/config/gt_config.py b/graphgps/config/gt_config.py
+index 7d85844..0b7a748 100644
+--- a/graphgps/config/gt_config.py
++++ b/graphgps/config/gt_config.py
+@@ -70,3 +70,7 @@ def set_cfg_gt(cfg):
+     cfg.gt.bigbird.block_size = 3
+ 
+     cfg.gt.bigbird.layer_norm_eps = 1e-6
++
++    cfg.gt.mpnn_ablation_list = []
++
++    cfg.gt.attention_ablation_list = []
+diff --git a/graphgps/layer/gps_layer.py b/graphgps/layer/gps_layer.py
+index 813371f..4007616 100644
+--- a/graphgps/layer/gps_layer.py
++++ b/graphgps/layer/gps_layer.py
+@@ -219,7 +219,10 @@ class GPSLayer(nn.Module):
+ 
+         # Combine local and global outputs.
+         # h = torch.cat(h_out_list, dim=-1)
+-        h = sum(h_out_list)
++        if not h_out_list:
++            h = h_in1
++        else:
++            h = sum(h_out_list)
+ 
+         # Feed Forward block.
+         h = h + self._ff_block(h)
+diff --git a/graphgps/network/gps_model.py b/graphgps/network/gps_model.py
+index bce22e1..63fa425 100644
+--- a/graphgps/network/gps_model.py
++++ b/graphgps/network/gps_model.py
+@@ -81,7 +81,13 @@ class GPSModel(torch.nn.Module):
+         except:
+             raise ValueError(f"Unexpected layer type: {cfg.gt.layer_type}")
+         layers = []
+-        for _ in range(cfg.gt.layers):
++        for layer_idx in range(cfg.gt.layers):
++
++            if layer_idx in cfg.gt.mpnn_ablation_list:
++                local_gnn_type = 'None'
++            if layer_idx in cfg.gt.attention_ablation_list:
++                global_model_type = 'None'
++
+             layers.append(GPSLayer(
+                 dim_h=cfg.gt.dim_hidden,
+                 local_gnn_type=local_gnn_type,
